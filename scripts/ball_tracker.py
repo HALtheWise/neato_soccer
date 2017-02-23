@@ -21,16 +21,23 @@ class BallTracker(object):
         """ Initialize the ball tracker """
         rospy.init_node('ball_tracker')
         self.cv_image = None                        # the latest image from the camera
+        self.binary_image = None
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
 
         rospy.Subscriber(image_topic, Image, self.process_image)
         self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        cv2.namedWindow('raw_video')
         cv2.namedWindow('video_window')
+        cv2.namedWindow('threshold_image')
 
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        self.hsv_image = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
+        self.binary_image = cv2.inRange(self.hsv_image, (40, 120, 100), (65, 256, 256))
+
+
 
     def run(self):
         """ The main run loop, in this node it doesn't do anything """
@@ -38,7 +45,8 @@ class BallTracker(object):
         while not rospy.is_shutdown():
             if not self.cv_image is None:
                 print self.cv_image.shape
-                cv2.imshow('video_window', self.cv_image)
+                cv2.imshow('video_window', self.hsv_image)
+                cv2.imshow('threshold_image', self.binary_image)
                 cv2.waitKey(5)
 
             # start out not issuing any motor commands
